@@ -1,17 +1,17 @@
 CFLAGS = -Wall -g -pthread
-LDFLAGS = -lpthread
+LDFLAGS = -lpthread -lm -lopencv_core -lopencv_highgui -lopencv_imgproc
 OBJ = src/main.o
 #HEADER = 
 .PHONY: clean
 
-world: $(OBJ)
+aufgabe_1: $(OBJ)
 	gcc $(LDFLAGS) -o $@ $(OBJ)
 
 %.o: %.c $(HEADER)
 	gcc $(CFLAGS) -c $< -o $@
 
 clean:
-	rm world $(OBJ)
+	rm aufgabe_1 $(OBJ)
 	
-all: world
+all: aufgabe_1
 
