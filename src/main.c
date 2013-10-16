@@ -8,13 +8,19 @@
 #include <strings.h>
 #include <unistd.h>
 #include <opencv/cv.h>
+#include <opencv/highgui.h>
 #include "global_const.h"
 
+static IplImage* image;
+
 int main(int argc, char *argv[]) {
-	int sockfd;
 	int portno;
-	struct sockaddr_in serv_addr;
 	struct hostent *server;
+	int sockfd;
+	struct sockaddr_in serv_addr;
+	int i;
+	int n;
+	int cBytes;
 
 	if (argc < 3) {
 	   fprintf(stderr,"usage %s hostname port\n", argv[0]);
@@ -52,6 +58,37 @@ int main(int argc, char *argv[]) {
 	}
 
 	printf("Connect succesful!\n");
+
+	image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, 3);
+	image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
+
+	cvNamedWindow("Simulator", CV_WINDOW_AUTOSIZE);
+
+	while(1) {
+		cBytes = image->imageSize;
+		printf("cBytes vor while: %d\n", cBytes);fflush(stdout);
+
+		while(cBytes != 0) {
+			n = read(sockfd, &image->imageData[image->imageSize - cBytes], cBytes);
+			if(n <= 0){
+				printf("ERROR reading from socket, closing connection\n");
+				close(sockfd);
+				return EXIT_SUCCESS;
+			}
+
+			cBytes -= n;
+
+		}
+
+		printf("cBytes nach while: %d\n\n", cBytes);fflush(stdout);
+
+		cvShowImage("Simulator", image);
+		if ((cvWaitKey(5) & 255) == 27) {
+			break;
+		}
+
+		//sleep(2);
+	}
 
 	// close
 	close(sockfd);
