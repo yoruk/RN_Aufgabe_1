@@ -1,7 +1,7 @@
 CFLAGS = -Wall -g -pthread
 LDFLAGS = -lpthread -lm -lopencv_core -lopencv_highgui -lopencv_imgproc
-OBJ = src/main.o
-#HEADER = 
+OBJ = src/main.o src/buffer.o src/client.o src/dummy_server.o
+HEADER = src/global_const.h src/buffer.h src/client.h src/dummy_server.h
 .PHONY: clean
 
 aufgabe_1: $(OBJ)
