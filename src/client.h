@@ -2,7 +2,7 @@
 #define CLIENT_H_
 
 void setHostname(char hostname[]);
-void setPort(char port[]);
+void setPort_Client(char port[]);
 void* client(void* arg);
 
 #endif /* CLIENT_H_ */

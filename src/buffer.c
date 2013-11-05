@@ -59,6 +59,9 @@ void write_Image(IplImage image) {
 		printf("DEBUG: write_Image() count = %d\n", imageBuffer.count);fflush(stdout);
 	}
 
+	// DEBUG
+	//printf("write: count = %d\n", imageBuffer.count);fflush(stdout);
+
 	// unlock
 	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
 		perror("write_Image(): failed to unlock mutex\n");
@@ -103,6 +106,9 @@ int read_Image(IplImage* image) {
 	if((imageBuffer.count < 0) || (imageBuffer.count > BUFFER_SIZE)) {
 		printf("DEBUG: read_Image() count = %d\n", imageBuffer.count);fflush(stdout);
 	}
+
+	// DEBUG
+	//printf("read: count = %d\n", imageBuffer.count);fflush(stdout);
 
 	// unlock
 	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {

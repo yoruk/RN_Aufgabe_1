@@ -6,7 +6,9 @@
 
 #define RUNTIME 60
 #define WAIT 5
+#define DATA_PROVIDER_WAIT 50000
 #define CONNECT_RETRIES 10
+#define MAX_CLIENTS 2
 
 #define IMAGE_WIDTH 320
 #define IMAGE_HEIGHT 240

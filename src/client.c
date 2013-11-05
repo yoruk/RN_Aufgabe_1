@@ -23,7 +23,7 @@ static int portno;
 static struct hostent* server;
 static struct sockaddr_in serv_addr;
 
-static IplImage* image;
+static IplImage* input_image;
 
 /****************** network functions ******************/
 
@@ -35,18 +35,18 @@ void setHostname(char hostname[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Server-Address is: %s\n", hostname);fflush(stdout);
+	printf("Client accessing Server: %s\n", hostname);fflush(stdout);
 }
 
 // convert portnumber from char to int
-void setPort(char port[]) {
+void setPort_Client(char port[]) {
 	portno = atoi(port);
 	if(port == 0) {
 		fprintf(stderr,"ERROR, no such port\n");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Server-Port is: %s\n", port);fflush(stdout);
+	printf("Client accessing port: %s\n", port);fflush(stdout);
 }
 
 // create new socket, socket()
@@ -94,7 +94,7 @@ static void openConnection() {
 			i++;
 	}
 
-	if(res == CONNECT_RETRIES-1) {
+	if(i == CONNECT_RETRIES-1) {
 		closeConnection();
 		printf("Client: unable to connect to server, exciting!\n");fflush(stdout);
 		exit(EXIT_FAILURE);
@@ -104,14 +104,14 @@ static void openConnection() {
 /****************** screen output functions ******************/
 
 static void prepareScreenOutput() {
-	image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-	image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
+	input_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
+	input_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
 
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 }
 
 static void showImage() {
-	cvShowImage(WINDOW_NAME, image);
+	cvShowImage(WINDOW_NAME, input_image);
 	if((cvWaitKey(5) & 255) == 27) {
 		return;
 	}
@@ -129,23 +129,23 @@ void* client(void* arg) {
 	prepareScreenOutput();
 
 	while(run) {
-		cBytes = image->imageSize;
+		cBytes = input_image->imageSize;
 
 		while(cBytes != 0) {
-			res = read(sockfd, &image->imageData[image->imageSize - cBytes], cBytes);
+			res = read(sockfd, &input_image->imageData[input_image->imageSize - cBytes], cBytes);
 			if(res <= 0){
 				printf("Client: error reading from socket\n");fflush(stdout);
 				closeConnection();
 				createSocket();
 				openConnection();
 
-				cBytes = image->imageSize;
+				cBytes = input_image->imageSize;
 			}
 
 			cBytes -= res;
 		}
 
-		write_Image(*image);
+		write_Image(*input_image);
 		showImage();
 	}
 

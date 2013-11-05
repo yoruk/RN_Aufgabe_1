@@ -1,32 +1,21 @@
 Starten des Demoservers: java -jar DemoServer.jar
 Starten der Aufgabe: ./aufgabe_1 127.0.0.1 5000
 
-Der Buffer und der Client sind soweit fertig.
-In den Buffer kann mit jeweils einer Funktion 
-gelesen und geschrieben werden.
+Der Server funktioniert wenn auch vorerst nur mit einem Client.
+Das Ganze ist im Moment noch ein wenig mit der heissen Nadel gestrickt.
+Fehler werden im Moment so gut wie garnicht abgefangen.
 
-Ich hoffe die beiden Methoden arbeiten soweit richtig 
-und erzeugen intern keine Speicherzugriffsfehler.
-Falls doch mal einer auftaucht muss genau
-geprueft werden ob es wirklich der Buffer war,
-der den Fehler erzeugt hat.
-Evtl. schreibe ich noch eine Funktion die den
-Buffer und die Array-Indexe ueberwacht.
+Lass den Server erstmal aussen vor, 
+den mache ich noch bis Mittwoch fertig.
 
-Den Client kann man auch ohne den Server starten
-und er macht dann eine vorgegeben Anzahl von
-Verbindungsversuchen. Das Selbe ebenfalls
-bei Verbindungsabbruch.
+Schau dir aber bitte mal den Puffer und dessen Arbeitsweise an.
+Es gibt keinen Nachlauf zum Server, also bei X Bildern im Puffer
+laeuft der Client nicht X Bilder hinterher, was ich erwarten wuerde.
+Das heisst, das auch bei Verbindungsproblemen der Client nicht noch
+einige Zeit ohne den Server auskommt.
 
-Der Server fehlt noch ganz. 
-Bis jetzt gibt es nur einen Dummy-Server
-damit auch mal was vom Buffer gelesen wird,
-also ein wechselseitiger Schreib-/Lesezugriff
-zustande kommt. Merkwuerdigerweise erzeugt
-der Dummy-Server 100% CPU-Auslastung.
-Deswegen ist er in der main.c erstmal auskommentiert.
-
-Weiss nicht ob ich am Sonntag noch Zeit finde weiterzumachen,
-ansonsten geht es Montag und Dienstag weiter.
+Ist meiner Meinung nach nichts kritisches, habe das auch schon
+bei den Anderen gesehen. Das war aber ein Feature was ich
+eigentlich eingeplant hatte und ich wuesste gerne warum das nicht laeuft.  
 
 Gruss, Michi
