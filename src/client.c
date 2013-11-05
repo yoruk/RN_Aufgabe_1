@@ -53,7 +53,7 @@ void setPort_Client(char port[]) {
 static void createSocket() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockfd < 0) {
-		perror("ERROR opening socket");
+		fprintf(stderr,"ERROR opening socket");
 		exit(EXIT_FAILURE);
 	}
 
