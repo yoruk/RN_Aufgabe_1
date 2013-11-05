@@ -52,10 +52,40 @@ static void* data_provider(void* arg) {
 	pthread_exit(NULL);
 }
 
-void* server_handler(void* arg) {
+static void* server(void* new_sockfd) {
 	IplImage* buffered_output_image;
 	int cBytes;
 	int res;
+
+	buffered_output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
+	buffered_output_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
+
+	while(run) {
+		cBytes = buffered_output_image->imageSize;
+		bcopy(output_image->imageData, buffered_output_image->imageData, buffered_output_image->imageSize);
+
+		while(cBytes != 0) {
+			res = write(*(int*)new_sockfd, &buffered_output_image->imageData[buffered_output_image->imageSize - cBytes], cBytes);
+			if(res <= 0){
+				printf("Server: error writing to socket\n");fflush(stdout);
+
+				sleep(1);
+
+				cBytes = buffered_output_image->imageSize;
+			}
+
+			cBytes -= res;
+		}
+
+	}
+
+	close(accept_sockfd);
+
+	pthread_exit(NULL);
+}
+
+void* server_handler(void* arg) {
+	int* new_sockfd;
 
 	// debug
 	output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
@@ -83,40 +113,24 @@ void* server_handler(void* arg) {
 	// listen()
 	listen(socket_sockfd,5);
 
-	// accept()
-	client_len = sizeof(cli_addr);
-	accept_sockfd = accept(socket_sockfd, (struct sockaddr *) &cli_addr, &client_len);
-	if (accept_sockfd < 0)
-	  printf("ERROR on accept");fflush(stdout);
-
-	printf("Server: Client connected\n");fflush(stdout);
-
-	numClients++;
-
-	buffered_output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-	buffered_output_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
-
-
 	while(run) {
-		cBytes = buffered_output_image->imageSize;
-		bcopy(output_image->imageData, buffered_output_image->imageData, buffered_output_image->imageSize);
+		// accept()
+		client_len = sizeof(cli_addr);
+		accept_sockfd = accept(socket_sockfd, (struct sockaddr *) &cli_addr, &client_len);
+		if (accept_sockfd < 0)
+		  printf("ERROR on accept");fflush(stdout);
 
-		while(cBytes != 0) {
-			res = write(accept_sockfd, &buffered_output_image->imageData[buffered_output_image->imageSize - cBytes], cBytes);
-			if(res <= 0){
-				printf("Server: error writing to socket\n");fflush(stdout);
+		printf("Server: Client connected\n");fflush(stdout);
 
-				sleep(1);
+		numClients++;
 
-				cBytes = buffered_output_image->imageSize;
-			}
+		new_sockfd = malloc(sizeof(accept_sockfd));
+		*new_sockfd = accept_sockfd;
 
-			cBytes -= res;
-		}
+		pthread_t server_type;
+		pthread_create(&server_type, NULL, &server, (void*)new_sockfd);
 	}
 
-
-	close(accept_sockfd);
 	close(socket_sockfd);
 
 	pthread_exit(NULL);
