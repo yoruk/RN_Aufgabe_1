@@ -9,8 +9,8 @@
 #include <netdb.h>
 #include <strings.h>
 
-#include "buffer.h"
 #include "global_const.h"
+#include "server.h"
 
 
 extern int run;
@@ -22,22 +22,21 @@ static unsigned int client_len;
 static struct sockaddr_in serv_addr;
 static struct sockaddr_in cli_addr;
 
-static IplImage* output_image;
-static pthread_t data_provider_thread;
+int num_accesses = 0;
+int num_servers = 0;
+pthread_mutex_t server_admin_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int numClients = 0;
+/****************** network functions ******************/
 
 void setPort_Server(char port[]) {
 	portno = atoi(port);
 	if(port == 0) {
-		fprintf(stderr,"ERROR, no such port\n");
+		perror("Client-Handler: ERROR, no such port");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Server running on port: %s\n", port);fflush(stdout);
+	printf("Client-Handler: Servers reachable on port: %s\n", port);fflush(stdout);
 }
-
-/****************** network functions ******************/
 
 // create new socket, socket()
 static void createSocket() {
@@ -45,7 +44,7 @@ static void createSocket() {
 
 	socket_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(socket_sockfd < 0) {
-		fprintf(stderr,"ERROR opening socket");
+		perror("Server-Handler: ERROR, can't create socket");
 		exit(EXIT_FAILURE);
 	}
 
@@ -64,7 +63,7 @@ static void prepareConnect() {
 // binding interfaces, bind()
 static void bindSocket() {
 	if(bind(socket_sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-		fprintf(stderr,"ERROR opening socket");
+		perror("Server-Handler: ERROR, can't bind");
 		exit(EXIT_FAILURE);
 	}
 
@@ -73,7 +72,10 @@ static void bindSocket() {
 
 // listening on a socket, listen()
 static void listenOnSocket() {
-	listen(socket_sockfd,5);
+	if(listen(socket_sockfd, 5) < 0) {
+		perror("Server-Handler: ERROR, can't listen");
+		exit(EXIT_FAILURE);
+	}
 
 	printf("Server-Handler: listening\n");fflush(stdout);
 }
@@ -87,67 +89,10 @@ static void closeConnection() {
 
 /****************** threads ******************/
 
-static void* data_provider(void* arg) {
-	while(run) {
-		if(numClients != 0) {
-			output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-			output_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
-			read_Image(output_image);
-		}
-
-		usleep(DATA_PROVIDER_WAIT);
-	}
-
-	pthread_exit(NULL);
-}
-
-static void* server(void* new_sockfd) {
-	IplImage* buffered_output_image;
-	int cBytes;
-	int res;
-	int exit = FALSE;
-
-	buffered_output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-	buffered_output_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
-
-	while(run && !exit) {
-		cBytes = buffered_output_image->imageSize;
-		bcopy(output_image->imageData, buffered_output_image->imageData, buffered_output_image->imageSize);
-
-		while(cBytes != 0 && !exit) {
-			res = write(*(int*)new_sockfd, &buffered_output_image->imageData[buffered_output_image->imageSize - cBytes], cBytes);
-			if(res <= 0){
-				printf("Server: error writing to socket, exciting!\n");fflush(stdout);
-
-				//cBytes = buffered_output_image->imageSize;
-
-				exit = TRUE;
-				break;
-			}
-
-			cBytes -= res;
-		}
-	}
-
-	free(new_sockfd);
-	close(*(int*)new_sockfd);
-
-	numClients--;
-
-	pthread_exit(NULL);
-}
-
 void* server_handler(void* arg) {
 	int* new_sockfd;
 
 	printf("Server-Handler: is running!\n");fflush(stdout);
-
-	// debug
-	output_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-	output_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
-
-	// start data provider
-	pthread_create(&data_provider_thread, NULL, &data_provider, NULL);
 
 	createSocket();
 	prepareConnect();
@@ -155,22 +100,29 @@ void* server_handler(void* arg) {
 	listenOnSocket();
 
 	while(run) {
-		// accept()
-		client_len = sizeof(cli_addr);
-		accept_sockfd = accept(socket_sockfd, (struct sockaddr *) &cli_addr, &client_len);
+		if(num_servers <= MAX_CLIENTS) {
 
-		if(numClients <= MAX_CLIENTS) {
+			// accept()
+			client_len = sizeof(cli_addr);
+			accept_sockfd = accept(socket_sockfd, (struct sockaddr *) &cli_addr, &client_len);
+			if(accept_sockfd < 0) {
+				perror("Server-Handler: ERROR, during accept");
+				exit(EXIT_FAILURE);
+			}
 
-			printf("Server: Client connected\n");fflush(stdout);
+			printf("Server-Handler: Received incoming connection\n");fflush(stdout);
 
-			numClients++;
+			num_servers++;
 
-			new_sockfd = malloc(sizeof(accept_sockfd));
+			new_sockfd = (int*)malloc(sizeof(accept_sockfd));
 			*new_sockfd = accept_sockfd;
 
-			pthread_t server_type;
-			pthread_create(&server_type, NULL, &server, (void*)new_sockfd);
+			// create new server thread
+			pthread_t server_thread;
+			pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
 		}
+
+		sleep(WAIT_SHORT);
 	}
 
 	closeConnection();

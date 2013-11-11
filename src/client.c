@@ -18,12 +18,20 @@
 
 extern int run;
 
+rawImage_t* input_image;
+pthread_mutex_t input_image_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t input_image_cond_client = PTHREAD_COND_INITIALIZER;
+pthread_cond_t input_image_cond_servers = PTHREAD_COND_INITIALIZER;
+
+extern int num_accesses;
+extern int num_servers;
+extern pthread_mutex_t server_admin_mutex;
+
 static int sockfd;
 static int portno;
 static struct hostent* server;
 static struct sockaddr_in serv_addr;
 
-static IplImage* input_image;
 
 /****************** network functions ******************/
 
@@ -31,29 +39,29 @@ static IplImage* input_image;
 void setHostname(char hostname[]) {
 	server = gethostbyname(hostname);
 	if(server == NULL) {
-		fprintf(stderr,"ERROR, no such host\n");
+		perror("Client: ERROR, no such host");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Client accessing Server: %s\n", hostname);fflush(stdout);
+	printf("Client: accessing Server: %s\n", hostname);fflush(stdout);
 }
 
 // convert portnumber from char to int
 void setPort_Client(char port[]) {
 	portno = atoi(port);
 	if(port == 0) {
-		fprintf(stderr,"ERROR, no such port\n");
+		perror("Client: ERROR, no such port");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Client accessing port: %s\n", port);fflush(stdout);
+	printf("Client: accessing port: %s\n", port);fflush(stdout);
 }
 
 // create new socket, socket()
 static void createSocket() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockfd < 0) {
-		fprintf(stderr,"ERROR opening socket");
+		perror("Client: ERROR, can't create socket");
 		exit(EXIT_FAILURE);
 	}
 
@@ -96,28 +104,53 @@ static void openConnection() {
 
 	if(i == CONNECT_RETRIES-1) {
 		closeConnection();
-		printf("Client: unable to connect to server, exciting!\n");fflush(stdout);
+		perror("Client: unable to connect to server, exciting!\n");fflush(stdout);
 		exit(EXIT_FAILURE);
 	}
 }
 
 /****************** screen output functions ******************/
 
-static void prepareScreenOutput() {
-	input_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
-	input_image->imageSize = IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE;
+//static void prepareScreenOutput(IplImage* image) {
+//	image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
+//	if(image == NULL) {
+//		perror("Client: ERROR, can't create image");fflush(stdout);
+//		exit(EXIT_FAILURE);
+//	}
+//
+//	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
+//}
 
-	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
-}
-
-static void showImage() {
-	cvShowImage(WINDOW_NAME, input_image);
+static void showImage(IplImage* image) {
+	cvShowImage(WINDOW_NAME, image);
 	if((cvWaitKey(5) & 255) == 27) {
 		return;
 	}
 }
 
+/****************** other functions ******************/
+
+static void cleanup() {
+	if(pthread_cond_destroy(&input_image_cond_client) != 0) {
+		perror("Client: ERROR, failed to destroy condition variable");
+		exit(EXIT_FAILURE);
+	}
+
+	if(pthread_cond_destroy(&input_image_cond_servers) != 0) {
+		perror("Client: ERROR, failed to destroy condition variable");
+		exit(EXIT_FAILURE);
+	}
+
+	if(pthread_mutex_destroy(&input_image_mutex) != 0) {
+		perror("Client: ERROR, failed to destroy mutex");
+		exit(EXIT_FAILURE);
+	}
+}
+
+/****************** thread functions ******************/
+
 void* client(void* arg) {
+	IplImage* tmp_image = NULL;
 	int cBytes = 0;
 	int res = 0;
 
@@ -126,30 +159,67 @@ void* client(void* arg) {
 	createSocket();
 	prepareConnect();
 	openConnection();
-	prepareScreenOutput();
+	//prepareScreenOutput(tmp_image);
+
+	input_image = (rawImage_t*)malloc(sizeof(rawImage_t));
+
+	tmp_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
+	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
 	while(run) {
-		cBytes = input_image->imageSize;
+		cBytes = tmp_image->imageSize;
 
 		while(cBytes != 0) {
-			res = read(sockfd, &input_image->imageData[input_image->imageSize - cBytes], cBytes);
+			res = read(sockfd, &tmp_image->imageData[tmp_image->imageSize - cBytes], cBytes);
+
 			if(res <= 0){
-				printf("Client: error reading from socket\n");fflush(stdout);
+				perror("Client: ERROR, can't read from socket");fflush(stdout);
+
 				closeConnection();
 				createSocket();
 				openConnection();
 
-				cBytes = input_image->imageSize;
+				cBytes = tmp_image->imageSize;
 			}
 
 			cBytes -= res;
 		}
 
-		write_Image(*input_image);
-		showImage();
+		// lock the input_image
+		if(pthread_mutex_lock(&input_image_mutex) != 0) {
+			perror("Client: ERROR, failed to lock mutex");
+			exit(EXIT_FAILURE);
+		}
+
+		// all servers need to be done with writing
+		// the last image into their buffers
+		while(num_accesses != 0) {
+			if(pthread_cond_wait(&input_image_cond_client, &input_image_mutex) != 0) {
+				perror("Client: ERROR, can't wait for condition variable");
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
+
+		num_accesses = num_servers;
+
+		if(pthread_cond_broadcast(&input_image_cond_servers) != 0) {
+			perror("Client: ERROR, failed to broadcast on condition variable");
+			exit(EXIT_FAILURE);
+		}
+
+		// unlock the input_image
+		if(pthread_mutex_unlock(&input_image_mutex) != 0) {
+			perror("Client: ERROR, failed to unlock mutex\n");
+			exit(EXIT_FAILURE);
+		}
+
+		showImage(tmp_image);
 	}
 
 	closeConnection();
+	cleanup();
 
 	printf("Client: is exciting!\n");fflush(stdout);
 

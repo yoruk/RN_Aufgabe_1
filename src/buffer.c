@@ -2,91 +2,83 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
+
 #include "global_const.h"
 #include "buffer.h"
 
-typedef struct {
-	IplImage data[BUFFER_SIZE];
-	unsigned int write_idx;
-	unsigned int read_idx;
-	unsigned int count;
-	pthread_mutex_t lock;
-} imageBuffer_t;
+//typedef struct {
+//	char data[IMAGE_SIZE];
+//} rawImage_t;
 
-static imageBuffer_t imageBuffer;
-static int done = FALSE;
+//typedef struct {
+//	rawImage_t data[BUFFER_SIZE];
+//	unsigned int write_idx;
+//	unsigned int read_idx;
+//	unsigned int count;
+//	pthread_mutex_t lock;
+//} imageBuffer_t;
 
-static void init_ImageBuffer() {
-	imageBuffer.write_idx = 0;
-	imageBuffer.read_idx = 0;
-	imageBuffer.count = 0;
+//void init_ImageBuffer(imageBuffer_t* imageBuffer) {
+//	imageBuffer = (imageBuffer_t*)malloc(sizeof(imageBuffer_t));
+//
+//	imageBuffer->write_idx = 0;
+//	imageBuffer->read_idx = 0;
+//	imageBuffer->count = 1;
+//
+//	if(pthread_mutex_init(&imageBuffer->lock, NULL) != 0) {
+//		perror("Buffer: init_ImageBuffer(): ERROR, failed to init mutex");
+//		exit(EXIT_FAILURE);
+//	}
+//}
 
-	if(pthread_mutex_init(&imageBuffer.lock, NULL) != 0) {
-		perror("init_ImageBuffer(): failed to init mutex\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void write_Image(IplImage image) {
+void write_Image(imageBuffer_t* imageBuffer, rawImage_t* image) {
 	// lock
-	if(pthread_mutex_lock(&imageBuffer.lock) != 0) {
-		perror("write_Image(): failed to lock mutex\n");
+	if(pthread_mutex_lock(&imageBuffer->lock) != 0) {
+		perror("Buffer: write_Image(): ERROR, failed to lock mutex");
 		exit(EXIT_FAILURE);
-	}
-
-	// init buffer if necessary
-	if(!done) {
-		init_ImageBuffer();
-		done = TRUE;
 	}
 
 	// write into buffer
-	imageBuffer.data[imageBuffer.write_idx] = image;
+	imageBuffer->data[imageBuffer->write_idx] = *image;
 
 	// move write index to next position
-	imageBuffer.write_idx = (imageBuffer.write_idx + 1) % BUFFER_SIZE;
+	imageBuffer->write_idx = (imageBuffer->write_idx + 1) % BUFFER_SIZE;
 
 	// drop oldest image if necessary,
 	// increase count if buffer isnt full already
-	if(imageBuffer.count == BUFFER_SIZE) {
-		imageBuffer.read_idx = (imageBuffer.read_idx + 1) % BUFFER_SIZE;
+	if(imageBuffer->count == BUFFER_SIZE) {
+		imageBuffer->read_idx = (imageBuffer->read_idx + 1) % BUFFER_SIZE;
 	} else {
-		imageBuffer.count++;
+		imageBuffer->count++;
 	}
 
 	// DEBUG
-	if((imageBuffer.count < 0) || (imageBuffer.count > BUFFER_SIZE)) {
-		printf("DEBUG: write_Image() count = %d\n", imageBuffer.count);fflush(stdout);
+	if((imageBuffer->count < 0) || (imageBuffer->count > BUFFER_SIZE)) {
+		printf("Buffer: DEBUG: write_Image() count = %d\n", imageBuffer->count);fflush(stdout);
 	}
 
 	// DEBUG
-	//printf("write: count = %d\n", imageBuffer.count);fflush(stdout);
+	//printf("write: count = %d\n", imageBuffer->count);fflush(stdout);
 
 	// unlock
-	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
-		perror("write_Image(): failed to unlock mutex\n");
+	if(pthread_mutex_unlock(&imageBuffer->lock) != 0) {
+		perror("Buffer: write_Image(): ERROR, failed to unlock mutex");
 		exit(EXIT_FAILURE);
 	}
 }
 
-int read_Image(IplImage* image) {
+int read_Image(imageBuffer_t* imageBuffer, rawImage_t* image) {
 	// lock
-	if(pthread_mutex_lock(&imageBuffer.lock) != 0) {
-		perror("read_Image(): failed to lock mutex\n");
+	if(pthread_mutex_lock(&imageBuffer->lock) != 0) {
+		perror("Buffer: read_Image(): ERROR, failed to lock mutex");
 		exit(EXIT_FAILURE);
 	}
 
-	// init buffer if necessary
-	if(!done) {
-		init_ImageBuffer();
-		done = TRUE;
-	}
-
 	// quit if buffer is empty
-	if(imageBuffer.count == 0) {
+	if(imageBuffer->count == 0) {
 		// unlock
-		if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
-			perror("read_Image(): failed to unlock mutex\n");
+		if(pthread_mutex_unlock(&imageBuffer->lock) != 0) {
+			perror("Buffer: read_Image(): ERROR, failed to unlock mutex");
 			exit(EXIT_FAILURE);
 		}
 
@@ -94,25 +86,25 @@ int read_Image(IplImage* image) {
 	}
 
 	// read from buffer
-	*image = imageBuffer.data[imageBuffer.read_idx];
+	*image = imageBuffer->data[imageBuffer->read_idx];
 
 	// move read index to next position
-	imageBuffer.read_idx = (imageBuffer.read_idx + 1) % BUFFER_SIZE;
+	imageBuffer->read_idx = (imageBuffer->read_idx + 1) % BUFFER_SIZE;
 
 	// decrease count
-	imageBuffer.count--;
+	imageBuffer->count--;
 
 	// DEBUG
-	if((imageBuffer.count < 0) || (imageBuffer.count > BUFFER_SIZE)) {
-		printf("DEBUG: read_Image() count = %d\n", imageBuffer.count);fflush(stdout);
+	if((imageBuffer->count < 0) || (imageBuffer->count > BUFFER_SIZE)) {
+		printf("Buffer: DEBUG: read_Image() count = %d\n", imageBuffer->count);fflush(stdout);
 	}
 
 	// DEBUG
-	//printf("read: count = %d\n", imageBuffer.count);fflush(stdout);
+	//printf("read: count = %d\n", imageBuffer->count);fflush(stdout);
 
 	// unlock
-	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
-		perror("read_Image(): failed to unlock mutex\n");
+	if(pthread_mutex_unlock(&imageBuffer->lock) != 0) {
+		perror("Buffer: write_Image(): ERROR, failed to unlock mutex");
 		exit(EXIT_FAILURE);
 	}
 
