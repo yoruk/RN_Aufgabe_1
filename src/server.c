@@ -126,16 +126,18 @@ void* server(void* new_sockfd) {
 
 	while(run && !exit_server) {
 		// get image from buffer
-		if(imageBuffer->count == 0) {
-			printf("Server: buffer empty!\n");fflush(stdout);
+		if(read_Image(imageBuffer, output_image) != 0) {
+			//printf("Server: buffer empty!\n");fflush(stdout);
 
+			// wait, buffer is empty
 			if(sem_wait(&server_wait) != 0) {
 				perror("Server: ERROR, failed to wait on semaphore");
 				exit(EXIT_FAILURE);
 			}
-		}
 
-		read_Image(imageBuffer, output_image);
+			// try again
+			read_Image(imageBuffer, output_image);
+		}
 
 		// determine how many bytes to write
 		cBytes = IMAGE_SIZE;
@@ -158,6 +160,11 @@ void* server(void* new_sockfd) {
 
 	}
 
+	num_servers--;
+	if(num_servers == 0) {
+		done_reading = TRUE;
+	}
+
 	pthread_join(buffer_feeder_thread, NULL);
 
 	close(*(int*)new_sockfd);
@@ -167,7 +174,6 @@ void* server(void* new_sockfd) {
 	free(output_image);
 	free(args);
 
-	num_servers--;
 
 	printf("Server: is exciting!\n");fflush(stdout);
 

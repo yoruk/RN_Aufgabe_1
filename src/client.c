@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -189,6 +190,9 @@ void* client(void* arg) {
 			exit(EXIT_FAILURE);
 		}
 
+		printf("test1\n");fflush(stdout);
+		printf("done_reading %d\n", done_reading);fflush(stdout);
+
 		// all servers need to be done with writing
 		// the last image into their buffers
 		while(num_servers != 0 && done_reading == FALSE) {
@@ -197,6 +201,10 @@ void* client(void* arg) {
 				exit(EXIT_FAILURE);
 			}
 		}
+
+		printf("test2\n");fflush(stdout);
+
+		printf("DEBUG client: num_servers=%d\n", num_servers);fflush(stdout);
 
 		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
 

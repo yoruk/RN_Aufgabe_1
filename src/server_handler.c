@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -22,7 +23,7 @@ static unsigned int client_len;
 static struct sockaddr_in serv_addr;
 static struct sockaddr_in cli_addr;
 
-int num_servers = 0;
+int num_servers;
 
 /****************** network functions ******************/
 
