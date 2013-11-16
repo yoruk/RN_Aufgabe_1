@@ -1,11 +1,11 @@
-CFLAGS = -Wall -g -pthread
+CFLAGS = -Wall -g -pthread -I/usr/include/opencv
 LDFLAGS = -lpthread -lm -lopencv_core -lopencv_highgui -lopencv_imgproc
 OBJ = src/main.o src/buffer.o src/client.o src/server_handler.o src/server.o
 HEADER = src/global_const.h src/buffer.h src/client.h src/server_handler.h src/server.h
 .PHONY: clean
 
 aufgabe_1: $(OBJ)
-	gcc $(LDFLAGS) -o $@ $(OBJ)
+	gcc $(CFLAGS) -o $@ $(OBJ) $(LDFLAGS)
 
 %.o: %.c $(HEADER)
 	gcc $(CFLAGS) -c $< -o $@
