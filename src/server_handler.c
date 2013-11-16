@@ -22,9 +22,7 @@ static unsigned int client_len;
 static struct sockaddr_in serv_addr;
 static struct sockaddr_in cli_addr;
 
-int num_accesses = 0;
 int num_servers = 0;
-pthread_mutex_t server_admin_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /****************** network functions ******************/
 
@@ -111,8 +109,6 @@ void* server_handler(void* arg) {
 			}
 
 			printf("Server-Handler: Received incoming connection\n");fflush(stdout);
-
-			num_servers++;
 
 			new_sockfd = (int*)malloc(sizeof(accept_sockfd));
 			*new_sockfd = accept_sockfd;

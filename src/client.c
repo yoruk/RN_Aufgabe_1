@@ -18,14 +18,12 @@
 
 extern int run;
 
-rawImage_t* input_image;
+rawImage_t* input_image = NULL;
+int done_reading = FALSE;
 pthread_mutex_t input_image_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t input_image_cond_client = PTHREAD_COND_INITIALIZER;
-pthread_cond_t input_image_cond_servers = PTHREAD_COND_INITIALIZER;
+pthread_cond_t input_image_cond = PTHREAD_COND_INITIALIZER;
 
-extern int num_accesses;
 extern int num_servers;
-extern pthread_mutex_t server_admin_mutex;
 
 static int sockfd;
 static int portno;
@@ -131,15 +129,15 @@ static void showImage(IplImage* image) {
 /****************** other functions ******************/
 
 static void cleanup() {
-	if(pthread_cond_destroy(&input_image_cond_client) != 0) {
+	if(pthread_cond_destroy(&input_image_cond) != 0) {
 		perror("Client: ERROR, failed to destroy condition variable");
 		exit(EXIT_FAILURE);
 	}
 
-	if(pthread_cond_destroy(&input_image_cond_servers) != 0) {
-		perror("Client: ERROR, failed to destroy condition variable");
-		exit(EXIT_FAILURE);
-	}
+//	if(pthread_cond_destroy(&input_image_cond_servers) != 0) {
+//		perror("Client: ERROR, failed to destroy condition variable");
+//		exit(EXIT_FAILURE);
+//	}
 
 	if(pthread_mutex_destroy(&input_image_mutex) != 0) {
 		perror("Client: ERROR, failed to destroy mutex");
@@ -193,8 +191,8 @@ void* client(void* arg) {
 
 		// all servers need to be done with writing
 		// the last image into their buffers
-		while(num_accesses != 0) {
-			if(pthread_cond_wait(&input_image_cond_client, &input_image_mutex) != 0) {
+		while(num_servers != 0 && done_reading == FALSE) {
+			if(pthread_cond_wait(&input_image_cond, &input_image_mutex) != 0) {
 				perror("Client: ERROR, can't wait for condition variable");
 				exit(EXIT_FAILURE);
 			}
@@ -202,9 +200,9 @@ void* client(void* arg) {
 
 		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
 
-		num_accesses = num_servers;
+		done_reading = FALSE;
 
-		if(pthread_cond_broadcast(&input_image_cond_servers) != 0) {
+		if(pthread_cond_broadcast(&input_image_cond) != 0) {
 			perror("Client: ERROR, failed to broadcast on condition variable");
 			exit(EXIT_FAILURE);
 		}
