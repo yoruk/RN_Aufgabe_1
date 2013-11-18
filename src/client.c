@@ -184,17 +184,15 @@ void* client(void* arg) {
 			cBytes -= res;
 		}
 
-		// lock the input_image
+		/************* begin critical section *************/
+
 		if(pthread_mutex_lock(&input_image_mutex) != 0) {
 			perror("Client: ERROR, failed to lock mutex");
 			exit(EXIT_FAILURE);
 		}
 
-		printf("test1\n");fflush(stdout);
-		printf("done_reading %d\n", done_reading);fflush(stdout);
-
-		// all servers need to be done with writing
-		// the last image into their buffers
+		// if servers exist,
+		// all servers need to be done with reading the last image
 		while(num_servers != 0 && done_reading == FALSE) {
 			if(pthread_cond_wait(&input_image_cond, &input_image_mutex) != 0) {
 				perror("Client: ERROR, can't wait for condition variable");
@@ -202,9 +200,7 @@ void* client(void* arg) {
 			}
 		}
 
-		printf("test2\n");fflush(stdout);
-
-		printf("DEBUG client: num_servers=%d\n", num_servers);fflush(stdout);
+//		printf("DEBUG: client in critical section, num_servers=%d\n", num_servers);fflush(stdout);
 
 		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
 
@@ -215,11 +211,12 @@ void* client(void* arg) {
 			exit(EXIT_FAILURE);
 		}
 
-		// unlock the input_image
 		if(pthread_mutex_unlock(&input_image_mutex) != 0) {
 			perror("Client: ERROR, failed to unlock mutex\n");
 			exit(EXIT_FAILURE);
 		}
+
+		/************* end critical section *************/
 
 		showImage(tmp_image);
 	}

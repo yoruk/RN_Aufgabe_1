@@ -23,7 +23,8 @@ static unsigned int client_len;
 static struct sockaddr_in serv_addr;
 static struct sockaddr_in cli_addr;
 
-int num_servers;
+int num_servers; // amount of servers currently running
+sem_t block_accept; // blocks further connections if MAX_CLIENTS has been reached
 
 /****************** network functions ******************/
 
@@ -93,33 +94,39 @@ void* server_handler(void* arg) {
 
 	printf("Server-Handler: is running!\n");fflush(stdout);
 
+	if(sem_init(&block_accept, 0, 0) != 0) {
+		perror("Server-Handler: ERROR, failed to init semaphore");
+		exit(EXIT_FAILURE);
+	}
+
 	createSocket();
 	prepareConnect();
 	bindSocket();
 	listenOnSocket();
 
 	while(run) {
-		if(num_servers <= MAX_CLIENTS) {
-
-			// accept()
-			client_len = sizeof(cli_addr);
-			accept_sockfd = accept(socket_sockfd, (struct sockaddr *) &cli_addr, &client_len);
-			if(accept_sockfd < 0) {
-				perror("Server-Handler: ERROR, during accept");
-				exit(EXIT_FAILURE);
-			}
-
-			printf("Server-Handler: Received incoming connection\n");fflush(stdout);
-
-			new_sockfd = (int*)malloc(sizeof(accept_sockfd));
-			*new_sockfd = accept_sockfd;
-
-			// create new server thread
-			pthread_t server_thread;
-			pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
+		// accept()
+		client_len = sizeof(cli_addr);
+		accept_sockfd = accept(socket_sockfd, (struct sockaddr*) &cli_addr, &client_len);
+		if(accept_sockfd < 0) {
+			perror("Server-Handler: ERROR, during accept");
+			exit(EXIT_FAILURE);
 		}
 
-		sleep(WAIT_SHORT);
+		printf("Server-Handler: Received incoming connection\n");fflush(stdout);
+
+		new_sockfd = (int*)malloc(sizeof(accept_sockfd));
+		*new_sockfd = accept_sockfd;
+
+		// create new server thread
+		pthread_t server_thread;
+		pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
+
+		// used as a border, can't be crossed if MAX_CLIENTS is reached
+		if(sem_wait(&block_accept) != 0) {
+			perror("Server-Handler: ERROR, failed to post on semaphore");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	closeConnection();
