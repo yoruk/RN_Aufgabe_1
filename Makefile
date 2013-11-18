@@ -5,7 +5,7 @@ HEADER = src/global_const.h src/buffer.h src/client.h src/server_handler.h src/s
 .PHONY: clean
 
 aufgabe_1: $(OBJ)
-	gcc $(LDFLAGS) -o $@ $(OBJ)
+	gcc $(CFLAGS) -o $@ $(OBJ) $(LDFLAGS)
 
 %.o: %.c $(HEADER)
 	gcc $(CFLAGS) -c $< -o $@
