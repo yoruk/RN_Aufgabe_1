@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -107,7 +108,9 @@ void* server_handler(void* arg) {
 	while(run) {
 		// accept()
 		client_len = sizeof(cli_addr);
-		accept_sockfd = accept(socket_sockfd, (struct sockaddr*) &cli_addr, &client_len);
+		do {
+			accept_sockfd = accept(socket_sockfd, (struct sockaddr*) &cli_addr, &client_len);
+		} while((errno == EINTR) && accept_sockfd < 0);
 		if(accept_sockfd < 0) {
 			perror("Server-Handler: ERROR, during accept");
 			exit(EXIT_FAILURE);
