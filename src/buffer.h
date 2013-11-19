@@ -13,6 +13,6 @@ typedef struct {
 } bufferEntry_t;
 
 void write_Image(rawImage_t* rawImage);
-int read_Image(bufferEntry_t entry, rawImage_t* rawImage);
+int read_Image(rawImage_t* image, bufferEntry_t* entry);
 
 #endif /* BUFFER_H_ */

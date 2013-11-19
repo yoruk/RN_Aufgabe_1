@@ -64,7 +64,7 @@ void write_Image(rawImage_t* image) {
 	}
 }
 
-int read_Image(bufferEntry_t entry, rawImage_t* image) {
+int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	// lock
 	if(pthread_mutex_lock(&imageBuffer.lock) != 0) {
 		perror("Buffer: read_Image(): ERROR, failed to lock mutex");
