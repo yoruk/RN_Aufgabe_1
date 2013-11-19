@@ -8,15 +8,11 @@ typedef struct {
 } rawImage_t;
 
 typedef struct {
-	rawImage_t data[BUFFER_SIZE];
-	unsigned int write_idx;
-	unsigned int read_idx;
-	unsigned int count;
-	pthread_mutex_t lock;
-} imageBuffer_t;
+	int last_oldest_image_idx;
+	int offset;
+} bufferEntry_t;
 
-//void init_ImageBuffer(imageBuffer_t* imageBuffer);
-void write_Image(imageBuffer_t* imageBuffer, rawImage_t* rawImage);
-int read_Image(imageBuffer_t* imageBuffer, rawImage_t* rawImage);
+void write_Image(rawImage_t* rawImage);
+int read_Image(bufferEntry_t entry, rawImage_t* rawImage);
 
 #endif /* BUFFER_H_ */

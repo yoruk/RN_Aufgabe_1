@@ -19,18 +19,10 @@
 
 extern int run;
 
-rawImage_t* input_image = NULL;
-int done_reading = FALSE;
-pthread_mutex_t input_image_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t input_image_cond = PTHREAD_COND_INITIALIZER;
-
-extern int num_servers;
-
 static int sockfd;
 static int portno;
 static struct hostent* server;
 static struct sockaddr_in serv_addr;
-
 
 /****************** network functions ******************/
 
@@ -127,40 +119,22 @@ static void showImage(IplImage* image) {
 	}
 }
 
-/****************** other functions ******************/
-
-static void cleanup() {
-	if(pthread_cond_destroy(&input_image_cond) != 0) {
-		perror("Client: ERROR, failed to destroy condition variable");
-		exit(EXIT_FAILURE);
-	}
-
-//	if(pthread_cond_destroy(&input_image_cond_servers) != 0) {
-//		perror("Client: ERROR, failed to destroy condition variable");
-//		exit(EXIT_FAILURE);
-//	}
-
-	if(pthread_mutex_destroy(&input_image_mutex) != 0) {
-		perror("Client: ERROR, failed to destroy mutex");
-		exit(EXIT_FAILURE);
-	}
-}
-
 /****************** thread functions ******************/
 
 void* client(void* arg) {
 	IplImage* tmp_image = NULL;
+	rawImage_t* input_image;
 	int cBytes = 0;
 	int res = 0;
 
 	printf("Client: is running!\n");fflush(stdout);
 
+	input_image = (rawImage_t*)malloc(sizeof(rawImage_t));
+
 	createSocket();
 	prepareConnect();
 	openConnection();
 	//prepareScreenOutput(tmp_image);
-
-	input_image = (rawImage_t*)malloc(sizeof(rawImage_t));
 
 	tmp_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
@@ -184,45 +158,13 @@ void* client(void* arg) {
 			cBytes -= res;
 		}
 
-		/************* begin critical section *************/
-
-		if(pthread_mutex_lock(&input_image_mutex) != 0) {
-			perror("Client: ERROR, failed to lock mutex");
-			exit(EXIT_FAILURE);
-		}
-
-		// if servers exist,
-		// all servers need to be done with reading the last image
-		while(num_servers != 0 && done_reading == FALSE) {
-			if(pthread_cond_wait(&input_image_cond, &input_image_mutex) != 0) {
-				perror("Client: ERROR, can't wait for condition variable");
-				exit(EXIT_FAILURE);
-			}
-		}
-
-//		printf("DEBUG: client in critical section, num_servers=%d\n", num_servers);fflush(stdout);
-
 		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
-
-		done_reading = FALSE;
-
-		if(pthread_cond_broadcast(&input_image_cond) != 0) {
-			perror("Client: ERROR, failed to broadcast on condition variable");
-			exit(EXIT_FAILURE);
-		}
-
-		if(pthread_mutex_unlock(&input_image_mutex) != 0) {
-			perror("Client: ERROR, failed to unlock mutex\n");
-			exit(EXIT_FAILURE);
-		}
-
-		/************* end critical section *************/
+		write_Image(input_image);
 
 		showImage(tmp_image);
 	}
 
 	closeConnection();
-	cleanup();
 
 	printf("Client: is exciting!\n");fflush(stdout);
 
