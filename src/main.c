@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
 //	sleep(RUNTIME);
 //	run = FALSE;
 
-	pthread_join(client_thread, NULL);
 //	pthread_join(server_handler_thread, NULL);
+	pthread_join(client_thread, NULL);
 
 	return EXIT_SUCCESS;
 }
