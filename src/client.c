@@ -139,7 +139,6 @@ void* client(void* arg) {
 	tmp_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
-
 	// DEBUG
 	rawImage_t* output_image;
 	output_image = (rawImage_t*)malloc(sizeof(rawImage_t));
@@ -147,7 +146,6 @@ void* client(void* arg) {
 	buffer_entry =  (bufferEntry_t*)malloc(sizeof(bufferEntry_t));
 	buffer_entry->last_oldest_image_idx = 0;
 	buffer_entry->offset = 0;
-
 
 	while(run) {
 		cBytes = tmp_image->imageSize;
