@@ -58,10 +58,10 @@ void write_Image(rawImage_t* image) {
 	}
 
 	// DEBUG
-//	printf("----- debug: write_image() -----\n");fflush(stdout);
-//	printf("imageBuffer.newest_image_idx = %d\n", imageBuffer.newest_image_idx);fflush(stdout);
-//	printf("imageBuffer.oldest_image_idx = %d\n", imageBuffer.oldest_image_idx);fflush(stdout);
-//	printf("imageBuffer.count = %d\n", imageBuffer.count);fflush(stdout);
+	printf("----- debug: write_image() -----\n");fflush(stdout);
+	printf("imageBuffer.newest_image_idx = %d\n", imageBuffer.newest_image_idx);fflush(stdout);
+	printf("imageBuffer.oldest_image_idx = %d\n", imageBuffer.oldest_image_idx);fflush(stdout);
+	printf("imageBuffer.count = %d\n", imageBuffer.count);fflush(stdout);
 
 	// unlock
 	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
@@ -73,6 +73,8 @@ void write_Image(rawImage_t* image) {
 int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	int tmp_oldest_image_idx;
 	int tmp_offset;
+	int oldest_image_idx_diff;
+	int read_idx;
 
 	// lock
 	if(pthread_mutex_lock(&imageBuffer.lock) != 0) {
@@ -83,8 +85,8 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	// init buffer if never done before
 	// and exit when done -> buffer is empty
 	if(!init_done) {
-		init_ImageBuffer();
-		init_done = TRUE;
+//		init_ImageBuffer();
+//		init_done = TRUE;
 
 		if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
 			perror("Buffer: read_Image(): ERROR, failed to unlock mutex");
@@ -96,27 +98,35 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 
 
 	// DEBUG
-//	printf("----- debug: read_image() -----\n");fflush(stdout);
-//	printf("entry->last_oldest_image_idx = %d\n", entry->last_oldest_image_idx);fflush(stdout);
-//	printf("entry->offset = %d\n", entry->offset);fflush(stdout);
-//	printf("imageBuffer.newest_image_idx = %d\n", imageBuffer.newest_image_idx);fflush(stdout);
-//	printf("imageBuffer.oldest_image_idx = %d\n", imageBuffer.oldest_image_idx);fflush(stdout);
-//	printf("imageBuffer.count = %d\n", imageBuffer.count);fflush(stdout);
+	printf("----- debug: read_image() -----\n");fflush(stdout);
+	printf("entry->last_oldest_image_idx = %d\n", entry->last_oldest_image_idx);fflush(stdout);
+	printf("entry->offset = %d\n", entry->offset);fflush(stdout);
+	printf("imageBuffer.newest_image_idx = %d\n", imageBuffer.newest_image_idx);fflush(stdout);
+	printf("imageBuffer.oldest_image_idx = %d\n", imageBuffer.oldest_image_idx);fflush(stdout);
+	printf("imageBuffer.count = %d\n", imageBuffer.count);fflush(stdout);
 
 	// have images been dropped since last access?
 	if(imageBuffer.oldest_image_idx != entry->last_oldest_image_idx) {
 		// yes, offset needs to be adjusted
 
 		// DEBUG
-//		printf("oldest image has moved!\n");fflush(stdout);
+		printf("oldest image has moved!\n");fflush(stdout);
 
-		tmp_offset = ((imageBuffer.oldest_image_idx + entry->offset) % BUFFER_SIZE) - imageBuffer.oldest_image_idx;
+		// calculate difference, adjust offset
+		if(imageBuffer.oldest_image_idx > entry->last_oldest_image_idx) {
+			oldest_image_idx_diff = imageBuffer.oldest_image_idx - entry->last_oldest_image_idx;
+			tmp_offset = BUFFER_SIZE - oldest_image_idx_diff;
+
+		} else if(imageBuffer.oldest_image_idx < entry->last_oldest_image_idx) {
+			oldest_image_idx_diff = entry->last_oldest_image_idx - imageBuffer.oldest_image_idx;
+			tmp_offset = (BUFFER_SIZE + oldest_image_idx_diff) % BUFFER_SIZE;
+		}
 
 	} else {
 		// no
 
 		// DEBUG
-//		printf("oldest image is still the same\n");fflush(stdout);
+		printf("oldest image is still the same\n");fflush(stdout);
 
 		tmp_offset = entry->offset;
 	}
@@ -126,8 +136,9 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	tmp_oldest_image_idx = imageBuffer.oldest_image_idx;
 
 	// DEBUG
-//	printf("tmp_oldest_image_idx = %d\n", tmp_oldest_image_idx);fflush(stdout);
-//	printf("tmp_offset = %d\n", tmp_offset);fflush(stdout);
+	printf("tmp_oldest_image_idx = %d\n", tmp_oldest_image_idx);fflush(stdout);
+	printf("tmp_offset = %d\n", tmp_offset);fflush(stdout);
+	printf("image read from idx = %d\n", (tmp_oldest_image_idx + tmp_offset) % BUFFER_SIZE); fflush(stdout);
 
 	// explanation for the if() below:
 	//
@@ -140,33 +151,36 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	//    in this case the tmp_oldest_image_idx + tmp_offset
 	//    isn't allowed to reach larger indexes than imageBuffer.newest_image_idx
 
-	// is the selected image in the buffer?
-	if( ((tmp_oldest_image_idx == imageBuffer.newest_image_idx) && tmp_offset >= BUFFER_SIZE)
-			|| ((tmp_oldest_image_idx != imageBuffer.newest_image_idx) &&  ((tmp_oldest_image_idx + tmp_offset) % BUFFER_SIZE) >= imageBuffer.newest_image_idx)) {
+	// which image to read?
+	read_idx = (tmp_oldest_image_idx + tmp_offset) % BUFFER_SIZE;
 
-			// no, exit with error
+	// is the image in the buffer?
+	if( ((tmp_oldest_image_idx != imageBuffer.newest_image_idx) && (read_idx >= imageBuffer.newest_image_idx))
+	 || ((tmp_oldest_image_idx == imageBuffer.newest_image_idx) && ((read_idx >= imageBuffer.newest_image_idx) && (read_idx <= entry->last_read_idx))) ) {
+		// no, exit with error
 
-			if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
-				perror("Buffer: read_Image(): ERROR, failed to unlock mutex");
-				exit(EXIT_FAILURE);
-			}
+		if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {
+			perror("Buffer: read_Image(): ERROR, failed to unlock mutex");
+			exit(EXIT_FAILURE);
+		}
 
-			// DEBUG
-			printf("the wanted image is not in the buffer!, exit\n");fflush(stdout);
+		// DEBUG
+		printf("the wanted image is not in the buffer!, exit\n");fflush(stdout);
 
-			return EXIT_FAILURE;
+		return EXIT_FAILURE;
 
 	} else {
-		// yes, output image, adjust entry values
-		*image = imageBuffer.data[(tmp_oldest_image_idx + tmp_offset) % BUFFER_SIZE];
+		// yes, read image, adjust entry values
+		*image = imageBuffer.data[read_idx];
 
 		entry->last_oldest_image_idx = tmp_oldest_image_idx;
+		entry->last_read_idx = read_idx;
 		entry->offset = (tmp_offset + 1) % BUFFER_SIZE;
 	}
 
 	// DEBUG
-//	printf("entry->last_oldest_image_idx = %d\n", entry->last_oldest_image_idx);fflush(stdout);
-//	printf("entry->offset = %d\n", entry->offset);fflush(stdout);
+	printf("entry->last_oldest_image_idx = %d\n", entry->last_oldest_image_idx);fflush(stdout);
+	printf("entry->offset = %d\n", entry->offset);fflush(stdout);
 
 	// unlock
 	if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {

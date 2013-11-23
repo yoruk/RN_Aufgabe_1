@@ -9,6 +9,7 @@ typedef struct {
 
 typedef struct {
 	int last_oldest_image_idx;
+	int last_read_idx;
 	int offset;
 } bufferEntry_t;
 

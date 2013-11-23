@@ -16,6 +16,6 @@
 #define PIXEL_SIZE 3
 #define IMAGE_SIZE (IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE)
 #define WINDOW_NAME "Client-Output"
-#define BUFFER_SIZE 200
+#define BUFFER_SIZE 4
 
 #endif /* GLOBAL_CONST_H_ */

@@ -139,13 +139,13 @@ void* client(void* arg) {
 	tmp_image = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), IPL_DEPTH_8U, PIXEL_SIZE);
 	cvNamedWindow(WINDOW_NAME, CV_WINDOW_AUTOSIZE);
 
-	// DEBUG
-	rawImage_t* output_image;
-	output_image = (rawImage_t*)malloc(sizeof(rawImage_t));
-	bufferEntry_t* buffer_entry;
-	buffer_entry =  (bufferEntry_t*)malloc(sizeof(bufferEntry_t));
-	buffer_entry->last_oldest_image_idx = 0;
-	buffer_entry->offset = 0;
+//	// DEBUG
+//	rawImage_t* output_image;
+//	output_image = (rawImage_t*)malloc(sizeof(rawImage_t));
+//	bufferEntry_t* buffer_entry;
+//	buffer_entry =  (bufferEntry_t*)malloc(sizeof(bufferEntry_t));
+//	buffer_entry->last_oldest_image_idx = 0;
+//	buffer_entry->offset = 0;
 
 	while(run) {
 		cBytes = tmp_image->imageSize;
@@ -170,10 +170,13 @@ void* client(void* arg) {
 		write_Image(input_image);
 
 		// DEBUG
-		read_Image(output_image, buffer_entry);
-		bcopy((char*)output_image->data, (char*)tmp_image->imageData, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
+//		read_Image(output_image, buffer_entry);
+//		bcopy((char*)output_image->data, (char*)tmp_image->imageData, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
 
 		showImage(tmp_image);
+
+		usleep(100000);
+		//sleep(1);
 	}
 
 	closeConnection();

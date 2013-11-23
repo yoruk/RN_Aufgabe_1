@@ -35,6 +35,7 @@ void* server(void* new_sockfd) {
 
 	// init buffer_entry
 	buffer_entry->last_oldest_image_idx = 0;
+	buffer_entry->last_oldest_image_idx = 0;
 	buffer_entry->offset = 0;
 
 	/************* increasing num_servers *************/
@@ -67,12 +68,11 @@ void* server(void* new_sockfd) {
 			res = read_Image(output_image, buffer_entry);
 
 			if(res != 0) {
-				printf("Server: buffer empty!\n");fflush(stdout);
+				//printf("Server: buffer empty!\n");fflush(stdout);
 
-				sleep(WAIT_SHORT);
+				usleep(5000);
 			}
 		} while(res != 0);
-
 
 		// determine how many bytes to write
 		cBytes = IMAGE_SIZE;
