@@ -115,12 +115,13 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 		// calculate difference, adjust offset
 		if(imageBuffer.oldest_image_idx > entry->last_oldest_image_idx) {
 			oldest_image_idx_diff = imageBuffer.oldest_image_idx - entry->last_oldest_image_idx;
-			tmp_offset = BUFFER_SIZE - oldest_image_idx_diff;
+			tmp_offset = (entry->offset - oldest_image_idx_diff) % BUFFER_SIZE;
 
 		} else if(imageBuffer.oldest_image_idx < entry->last_oldest_image_idx) {
 			oldest_image_idx_diff = entry->last_oldest_image_idx - imageBuffer.oldest_image_idx;
-			tmp_offset = (BUFFER_SIZE + oldest_image_idx_diff) % BUFFER_SIZE;
+			tmp_offset = (entry->offset + oldest_image_idx_diff) % BUFFER_SIZE;
 		}
+
 
 	} else {
 		// no
@@ -155,8 +156,9 @@ int read_Image(rawImage_t* image, bufferEntry_t* entry) {
 	read_idx = (tmp_oldest_image_idx + tmp_offset) % BUFFER_SIZE;
 
 	// is the image in the buffer?
-	if( ((tmp_oldest_image_idx != imageBuffer.newest_image_idx) && (read_idx >= imageBuffer.newest_image_idx))
-	 || ((tmp_oldest_image_idx == imageBuffer.newest_image_idx) && ((read_idx >= imageBuffer.newest_image_idx) && (read_idx <= entry->last_read_idx))) ) {
+	if( ((entry->last_read_idx != -1) && (read_idx == imageBuffer.newest_image_idx))
+	 || ((entry->last_read_idx == -1) && (read_idx >= imageBuffer.newest_image_idx))) {
+
 		// no, exit with error
 
 		if(pthread_mutex_unlock(&imageBuffer.lock) != 0) {

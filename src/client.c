@@ -175,7 +175,7 @@ void* client(void* arg) {
 
 		showImage(tmp_image);
 
-		usleep(100000);
+		//usleep(100000);
 		//sleep(1);
 	}
 
