@@ -106,12 +106,16 @@ void* server_handler(void* arg) {
 		exit(EXIT_FAILURE);
 	}
 
-	createSocket();
 	prepareConnect();
-	bindSocket();
-	listenOnSocket();
+//	createSocket();
+//	bindSocket();
+//	listenOnSocket();
 
 	while(run) {
+		createSocket();
+		bindSocket();
+		listenOnSocket();
+
 		// accept()
 		client_len = sizeof(cli_addr);
 		do {
@@ -131,6 +135,8 @@ void* server_handler(void* arg) {
 		pthread_t server_thread;
 		pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
 
+		closeConnection();
+
 		// used as a border, can't be crossed if MAX_CLIENTS is reached
 		if(sem_wait(&block_accept) != 0) {
 			perror("Server-Handler: ERROR, failed to post on semaphore");
@@ -138,7 +144,7 @@ void* server_handler(void* arg) {
 		}
 	}
 
-	closeConnection();
+//	closeConnection();
 
 	if(pthread_mutex_destroy(&num_servers_lock) != 0) {
 		perror("Server-Handler: ERROR, failed to init mutex");

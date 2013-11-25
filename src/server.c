@@ -35,8 +35,8 @@ void* server(void* new_sockfd) {
 
 	// init buffer_entry
 	buffer_entry->last_oldest_image_idx = 0;
-	buffer_entry->last_oldest_image_idx = 0;
 	buffer_entry->offset = 0;
+	buffer_entry->first_run = TRUE;
 
 	/************* increasing num_servers *************/
 

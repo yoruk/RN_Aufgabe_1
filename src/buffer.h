@@ -9,8 +9,8 @@ typedef struct {
 
 typedef struct {
 	int last_oldest_image_idx;
-	int last_read_idx;
 	int offset;
+	int first_run;
 } bufferEntry_t;
 
 void write_Image(rawImage_t* rawImage);
