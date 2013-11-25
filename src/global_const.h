@@ -9,7 +9,7 @@
 #define WAIT_SHORT 1
 #define CONNECT_RETRIES 10
 #define BUFFER_READ_RETRIES 10
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 4
 
 #define IMAGE_WIDTH 320
 #define IMAGE_HEIGHT 240
