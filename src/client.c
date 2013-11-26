@@ -83,14 +83,17 @@ static void openConnection() {
 	while((i != CONNECT_RETRIES-1) && res == -1) {
 			res = connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
-			if(res != -1) {
+			if(res == 0) {
 				printf("Client: trying to connect to server, success!\n");fflush(stdout);
 			} else {
 				printf("Client: trying to connect to server, failed!\n");fflush(stdout);
-				sleep(WAIT);
+				//sleep(WAIT);
 			}
 
 			i++;
+
+			//sleep(WAIT);
+			sleep(WAIT_SHORT);
 	}
 
 	if(i == CONNECT_RETRIES-1) {

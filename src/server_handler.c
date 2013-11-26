@@ -26,7 +26,6 @@ static struct sockaddr_in cli_addr;
 
 int num_servers; // amount of servers currently running
 pthread_mutex_t num_servers_lock; // protects num_servers
-sem_t block_accept; // blocks further connections if MAX_CLIENTS has been reached
 
 /****************** network functions ******************/
 
@@ -101,58 +100,65 @@ void* server_handler(void* arg) {
 		exit(EXIT_FAILURE);
 	}
 
-	if(sem_init(&block_accept, 0, 0) != 0) {
-		perror("Server-Handler: ERROR, failed to init semaphore");
-		exit(EXIT_FAILURE);
-	}
-
+	createSocket();
 	prepareConnect();
-//	createSocket();
-//	bindSocket();
-//	listenOnSocket();
+	bindSocket();
+	listenOnSocket();
 
 	while(run) {
-		createSocket();
-		bindSocket();
-		listenOnSocket();
-
 		// accept()
 		client_len = sizeof(cli_addr);
+
 		do {
 			accept_sockfd = accept(socket_sockfd, (struct sockaddr*) &cli_addr, &client_len);
 		} while((errno == EINTR) && accept_sockfd < 0);
+
 		if(accept_sockfd < 0) {
 			perror("Server-Handler: ERROR, during accept");
 			exit(EXIT_FAILURE);
 		}
 
-		printf("Server-Handler: Received incoming connection\n");fflush(stdout);
+		printf("Server-Handler: received incoming connection\n");fflush(stdout);
 
-		new_sockfd = (int*)malloc(sizeof(accept_sockfd));
-		*new_sockfd = accept_sockfd;
+		/************* handling num_servers *************/
 
-		// create new server thread
-		pthread_t server_thread;
-		pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
-
-		closeConnection();
-
-		// used as a border, can't be crossed if MAX_CLIENTS is reached
-		if(sem_wait(&block_accept) != 0) {
-			perror("Server-Handler: ERROR, failed to post on semaphore");
+		if(pthread_mutex_lock(&num_servers_lock) != 0) {
+			perror("Server-Handler: ERROR, can't lock mutex");
 			exit(EXIT_FAILURE);
 		}
+
+		printf("Server-handler: current amount of running servers = %d, maximum = %d\n", num_servers, MAX_CLIENTS);fflush(stdout);
+
+		if(num_servers < MAX_CLIENTS) {
+			printf("Server-Handler: creating new server\n");fflush(stdout);
+
+			new_sockfd = (int*)malloc(sizeof(accept_sockfd));
+			*new_sockfd = accept_sockfd;
+
+			// create new server thread
+			pthread_t server_thread;
+			pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
+
+			num_servers++;
+
+		} else {
+			printf("Server-Handler: max amount of running servers already reached, closing connection\n");fflush(stdout);
+
+			close(accept_sockfd);
+		}
+
+		if(pthread_mutex_unlock(&num_servers_lock) != 0) {
+			perror("Server-Handler: ERROR, can't unlock mutex");
+			exit(EXIT_FAILURE);
+		}
+
+		/************* done with handling num_servers *************/
 	}
 
-//	closeConnection();
+	closeConnection();
 
 	if(pthread_mutex_destroy(&num_servers_lock) != 0) {
 		perror("Server-Handler: ERROR, failed to init mutex");
-		exit(EXIT_FAILURE);
-	}
-
-	if(sem_destroy(&block_accept) != 0) {
-		perror("Server-Handler: ERROR, failed to init semaphore");
 		exit(EXIT_FAILURE);
 	}
 

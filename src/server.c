@@ -18,7 +18,6 @@ extern int run;
 
 extern int num_servers;
 extern pthread_mutex_t num_servers_lock;
-extern sem_t block_accept;
 
 void* server(void* new_sockfd) {
 	rawImage_t* output_image;
@@ -37,30 +36,6 @@ void* server(void* new_sockfd) {
 	buffer_entry->last_oldest_image_idx = 0;
 	buffer_entry->offset = 0;
 	buffer_entry->first_run = TRUE;
-
-	/************* increasing num_servers *************/
-
-	if(pthread_mutex_lock(&num_servers_lock) != 0) {
-		perror("Server: ERROR, can't lock mutex");
-		exit(EXIT_FAILURE);
-	}
-
-	num_servers++;
-
-	// if MAX_CLIENTS is reached, don't free semaphore in server_handler
-	if(num_servers < MAX_CLIENTS) {
-		if(sem_post(&block_accept) != 0) {
-			perror("Server: ERROR, failed to post on semaphore");
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if(pthread_mutex_unlock(&num_servers_lock) != 0) {
-		perror("Server: ERROR, can't unlock mutex");
-		exit(EXIT_FAILURE);
-	}
-
-	/************* done with increasing num_servers *************/
 
 	while(run && !exit_server) {
 		// get image from buffer
@@ -107,12 +82,6 @@ void* server(void* new_sockfd) {
 	}
 
 	num_servers--;
-
-	// free semaphore in server_handler if necessary
-	if(sem_post(&block_accept) != 0) {
-		perror("Server: ERROR, failed to post on semaphore");
-		exit(EXIT_FAILURE);
-	}
 
 	if(pthread_mutex_unlock(&num_servers_lock) != 0) {
 		perror("Server: ERROR, can't unlock mutex");
