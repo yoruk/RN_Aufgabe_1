@@ -162,7 +162,7 @@ void* server_handler(void* arg) {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Client-Handler: is exciting!\n");fflush(stdout);
+	printf("Client-Handler: is exiting!\n");fflush(stdout);
 
 	pthread_exit(NULL);
 }

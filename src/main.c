@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
 	pthread_join(server_handler_thread, NULL);
 	pthread_join(client_thread, NULL);
 
-
 //	// BUFFER DEBUG
 //	rawImage_t* input_image = (rawImage_t*)malloc(sizeof(rawImage_t));
 //	rawImage_t* output_image = (rawImage_t*)malloc(sizeof(rawImage_t));

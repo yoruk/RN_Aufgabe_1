@@ -20,27 +20,23 @@ extern int num_servers;
 extern pthread_mutex_t num_servers_lock;
 
 void* server(void* new_sockfd) {
-	rawImage_t* output_image;
-	bufferEntry_t* buffer_entry;
+	rawImage_t output_image;
+	bufferEntry_t buffer_entry;
 	int exit_server = FALSE;
 	int cBytes = 0;
 	int res = 0;
 
 	printf("Server: is running!\n");fflush(stdout);
 
-	// malloc for data structures
-	output_image = (rawImage_t*)malloc(sizeof(rawImage_t));
-	buffer_entry =  (bufferEntry_t*)malloc(sizeof(bufferEntry_t));
-
 	// init buffer_entry
-	buffer_entry->last_oldest_image_idx = 0;
-	buffer_entry->offset = 0;
-	buffer_entry->first_run = TRUE;
+	buffer_entry.last_oldest_image_idx = 0;
+	buffer_entry.offset = 0;
+	buffer_entry.first_run = TRUE;
 
 	while(run && !exit_server) {
 		// get image from buffer
 		do {
-			res = read_Image(output_image, buffer_entry);
+			res = read_Image(&output_image, &buffer_entry);
 
 			if(res != 0) {
 				//printf("Server: buffer empty!\n");fflush(stdout);
@@ -54,7 +50,8 @@ void* server(void* new_sockfd) {
 
 		// write
 		while(cBytes != 0 && !exit_server) {
-			res = write(*(int*)new_sockfd, &output_image->data[IMAGE_SIZE - cBytes], cBytes);
+			//res = write(*(int*)new_sockfd, &output_image->data[IMAGE_SIZE - cBytes], cBytes);
+			res = send(*(int*)new_sockfd, &output_image.data[IMAGE_SIZE - cBytes], cBytes, MSG_NOSIGNAL);
 
 			if(res <= 0) {
 				printf("Server: ERROR, can't write to socket, exciting!\n");fflush(stdout);
@@ -71,8 +68,6 @@ void* server(void* new_sockfd) {
 	close(*(int*)new_sockfd);
 
 	free(new_sockfd);
-	free(output_image);
-	free(buffer_entry);
 
 	/************* decreasing num_servers *************/
 
@@ -90,7 +85,7 @@ void* server(void* new_sockfd) {
 
 	/************* done with decreasing num_servers *************/
 
-	printf("Server: is exciting!\n");fflush(stdout);
+	printf("Server: is exiting!\n");fflush(stdout);
 
 	pthread_exit(NULL);
 }

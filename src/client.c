@@ -126,13 +126,11 @@ static void showImage(IplImage* image) {
 
 void* client(void* arg) {
 	IplImage* tmp_image = NULL;
-	rawImage_t* input_image;
+	rawImage_t input_image;
 	int cBytes = 0;
 	int res = 0;
 
 	printf("Client: is running!\n");fflush(stdout);
-
-	input_image = (rawImage_t*)malloc(sizeof(rawImage_t));
 
 	createSocket();
 	prepareConnect();
@@ -169,8 +167,8 @@ void* client(void* arg) {
 			cBytes -= res;
 		}
 
-		bcopy((char*)tmp_image->imageData, (char*)input_image->data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
-		write_Image(input_image);
+		bcopy((char*)tmp_image->imageData, &input_image.data, IMAGE_WIDTH * IMAGE_HEIGHT * PIXEL_SIZE);
+		write_Image(&input_image);
 
 		// DEBUG
 //		read_Image(output_image, buffer_entry);
@@ -184,7 +182,7 @@ void* client(void* arg) {
 
 	closeConnection();
 
-	printf("Client: is exciting!\n");fflush(stdout);
+	printf("Client: is exiting!\n");fflush(stdout);
 
 	pthread_exit(NULL);
 }
