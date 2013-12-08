@@ -138,6 +138,7 @@ void* server_handler(void* arg) {
 			// create new server thread
 			pthread_t server_thread;
 			pthread_create(&server_thread, NULL, &server, (void*)new_sockfd);
+			pthread_detach(server_thread);
 
 			num_servers++;
 
